@@ -4,16 +4,27 @@ A lightweight Human Resource Management System for managing employee records and
 
 ---
 
+## What's Implemented
+
+- **Employee management:** Add (ID, Full Name, Email, Department), list all, delete.
+- **Attendance:** Mark attendance (date, Present/Absent), view records per employee.
+- **REST APIs** for all actions; data stored in Supabase (PostgreSQL).
+- **Validation:** Required fields, valid email, duplicate employee ID/email handling (409).
+- **UI:** Dashboard, Employees, Attendance pages; loading, empty, and error states; reusable components.
+- **Bonus:** Filter attendance by date; total present days per employee; dashboard summary (counts + table).
+
+---
+
 ## Submission
 
 **Live Application URL**
 
-<!-- Add your live frontend URL here -->
+https://hrm-five-ebon.vercel.app/
 
 
 **GitHub Repository Link**
 
-<!-- Add your GitHub repo link here -->
+https://github.com/firdosh008/HRM
 
 
 ---
