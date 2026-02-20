@@ -42,7 +42,11 @@ export default function AttendancePage() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>('')
+  const [dateFrom, setDateFrom] = useState<string>('')
+  const [dateTo, setDateTo] = useState<string>('')
   const [markLoading, setMarkLoading] = useState(false)
+  const [presentDaysSummary, setPresentDaysSummary] = useState<{ employee_id: string; present_days: number }[]>([])
+  const [summaryLoading, setSummaryLoading] = useState(true)
   const [markForm, setMarkForm] = useState({
     employee_id: '',
     date: new Date().toISOString().split('T')[0],
@@ -63,9 +67,11 @@ export default function AttendancePage() {
   const fetchAttendance = async () => {
     try {
       setLoading(true)
-      const url = filterEmployeeId
-        ? `/api/attendance?employee_id=${encodeURIComponent(filterEmployeeId)}`
-        : '/api/attendance'
+      const params = new URLSearchParams()
+      if (filterEmployeeId) params.set('employee_id', filterEmployeeId)
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo) params.set('date_to', dateTo)
+      const url = `/api/attendance${params.toString() ? `?${params}` : ''}`
       const res = await fetch(url)
       if (!res.ok) {
         toast.error('Failed to load attendance')
@@ -84,9 +90,27 @@ export default function AttendancePage() {
     fetchEmployees()
   }, [])
 
+  const fetchSummary = async () => {
+    try {
+      const res = await fetch('/api/attendance/summary')
+      if (res.ok) {
+        const data = await res.json()
+        setPresentDaysSummary(data)
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSummaryLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchAttendance()
-  }, [filterEmployeeId])
+  }, [filterEmployeeId, dateFrom, dateTo])
+
+  useEffect(() => {
+    fetchSummary()
+  }, [])
 
   const handleMarkAttendance = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -114,6 +138,7 @@ export default function AttendancePage() {
       toast.success('Attendance marked')
       setMarkForm((prev) => ({ ...prev, date: new Date().toISOString().split('T')[0], status: 'present' }))
       fetchAttendance()
+      fetchSummary()
     } catch {
       toast.error('Failed to mark attendance')
     } finally {
@@ -190,24 +215,44 @@ export default function AttendancePage() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <CardTitle>Attendance Records</CardTitle>
-            <div className="flex items-center gap-2">
-              <Label className="text-sm text-muted-foreground whitespace-nowrap">Filter by employee</Label>
-              <Select
-                value={filterEmployeeId || 'all'}
-                onValueChange={(v) => setFilterEmployeeId(v === 'all' ? '' : v)}
-              >
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="All employees" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All employees</SelectItem>
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.id} value={emp.id}>
-                      {emp.employee_id} – {emp.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">Employee</Label>
+                <Select
+                  value={filterEmployeeId || 'all'}
+                  onValueChange={(v) => setFilterEmployeeId(v === 'all' ? '' : v)}
+                >
+                  <SelectTrigger className="w-[220px]">
+                    <SelectValue placeholder="All employees" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All employees</SelectItem>
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.employee_id} – {emp.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">From date</Label>
+                <Input
+                  type="date"
+                  className="w-[140px]"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">To date</Label>
+                <Input
+                  type="date"
+                  className="w-[140px]"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -249,6 +294,41 @@ export default function AttendancePage() {
                           {record.status === 'present' ? 'Present' : 'Absent'}
                         </span>
                       </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Total Present Days per Employee</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {summaryLoading ? (
+            <p className="text-center text-gray-600">Loading...</p>
+          ) : presentDaysSummary.length === 0 ? (
+            <p className="text-center text-gray-600 py-6">No attendance data yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Present days</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {presentDaysSummary.map(({ employee_id, present_days }) => {
+                  const emp = employeeMap.get(employee_id)
+                  return (
+                    <TableRow key={employee_id}>
+                      <TableCell className="font-medium">
+                        {emp ? `${emp.employee_id} – ${emp.full_name}` : employee_id}
+                      </TableCell>
+                      <TableCell>{present_days}</TableCell>
                     </TableRow>
                   )
                 })}

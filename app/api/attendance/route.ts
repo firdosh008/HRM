@@ -5,6 +5,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const employeeId = searchParams.get('employee_id')
+    const dateFrom = searchParams.get('date_from')
+    const dateTo = searchParams.get('date_to')
 
     const supabase = createAdminClient()
     let query = supabase
@@ -14,6 +16,12 @@ export async function GET(request: NextRequest) {
 
     if (employeeId) {
       query = query.eq('employee_id', employeeId)
+    }
+    if (dateFrom) {
+      query = query.gte('date', dateFrom)
+    }
+    if (dateTo) {
+      query = query.lte('date', dateTo)
     }
 
     const { data, error } = await query
